@@ -1,0 +1,39 @@
+# Stealth callback profile — minimise SOC dashboard impact.
+#
+# Used when OPSEC=quiet/silent or when the operator passes
+# `--c2-profile stealth`. The shell runner sleeps 30 s ±30 % between
+# subprocess invocations, rotates User-Agent on every web call, and
+# the engagement loop interleaves a handful of decoy probes against
+# other in-scope targets so the real activity blends in.
+
+name: stealth
+
+# Base sleep + jitter applied between every subprocess spawn.
+sleep_s: 30.0
+jitter_pct: 0.30
+
+request_pacing: steady
+
+user_agents:
+  - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+  - "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Safari/605.1.15"
+  - "Mozilla/5.0 (X11; Linux x86_64; rv:122.0) Gecko/20100101 Firefox/122.0"
+  - "Mozilla/5.0 (iPhone; CPU iPhone OS 17_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Mobile/15E148 Safari/604.1"
+  - "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Mobile Safari/537.36"
+  - "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0"
+  - "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0"
+  - "Mozilla/5.0 (iPad; CPU OS 17_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Mobile/15E148 Safari/604.1"
+  - "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+  - "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:122.0) Gecko/20100101 Firefox/122.0"
+
+# Headers added to every web call (curl/httpx/ffuf via header_args).
+# Accept-Language helps blend in with real-user traffic.
+extra_headers:
+  Accept-Language: "en-US,en;q=0.9"
+  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+  Cache-Control: "no-cache"
+
+# Optional decoy targets — interleaved no-op probes between real
+# tool calls. Populated lazily by the engagement loop from RoE
+# in_scope entries that aren't the primary target.
+decoy_targets: []

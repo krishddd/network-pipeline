@@ -1,0 +1,18 @@
+id: SPRING-ACTUATOR-ENV
+title: Spring Boot actuator /env endpoint exposed — environment variable leak
+severity: high
+http_request:
+  method: GET
+  path: /actuator/env
+  body: ""
+expected_response:
+  status: 200
+  body_contains: "propertySources"
+cvss: 7.5
+cwe:
+  - CWE-200
+mitre:
+  - T1083
+references:
+  - https://docs.spring.io/spring-boot/docs/current/reference/html/actuator.html
+remediation: Set management.endpoints.web.exposure.include=health,info only. Restrict actuator endpoints behind auth.

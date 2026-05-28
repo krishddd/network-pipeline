@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>network_pipeline — click-to-run</title>
+<style>
+  :root {
+    --bg: #0e1116;
+    --panel: #161b22;
+    --panel-2: #1c2128;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --ok: #3fb950;
+    --warn: #d29922;
+    --err: #f85149;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+               font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                            Roboto, sans-serif; }
+  header { padding: 18px 24px; border-bottom: 1px solid var(--border);
+           display: flex; align-items: center; justify-content: space-between; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .meta { color: var(--muted); font-size: 13px; }
+  main { display: grid; grid-template-columns: 1fr 1fr;
+         gap: 24px; padding: 24px; }
+  @media (max-width: 1100px) { main { grid-template-columns: 1fr; } }
+  section { background: var(--panel); border: 1px solid var(--border);
+            border-radius: 8px; padding: 18px; }
+  section h2 { margin: 0 0 12px; font-size: 15px;
+               font-weight: 600; color: var(--text); }
+  .target { background: var(--panel-2); border: 1px solid var(--border);
+            border-radius: 6px; padding: 14px; margin-bottom: 12px; }
+  .target h3 { margin: 0 0 6px; font-size: 14px; color: var(--accent); }
+  .target .url { font-family: ui-monospace, SFMono-Regular, monospace;
+                 color: var(--muted); font-size: 12px; word-break: break-all;
+                 margin-bottom: 8px; }
+  .target .desc { font-size: 13px; color: var(--text); margin-bottom: 8px; }
+  .badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .badge { background: #21262d; border: 1px solid var(--border); border-radius: 999px;
+           padding: 2px 8px; font-size: 11px; color: var(--muted); }
+  .badge.warn { color: var(--warn); border-color: var(--warn); }
+  .controls { display: flex; gap: 8px; align-items: center; }
+  input[type=text] { background: #0d1117; border: 1px solid var(--border);
+                     color: var(--text); border-radius: 6px;
+                     padding: 6px 10px; font-size: 12px; flex: 1;
+                     font-family: ui-monospace, SFMono-Regular, monospace; }
+  button { background: var(--accent); color: #0e1116; border: none;
+           border-radius: 6px; padding: 6px 14px; font-weight: 600;
+           cursor: pointer; font-size: 13px; }
+  button:hover { filter: brightness(1.1); }
+  button:disabled { background: #30363d; color: var(--muted); cursor: not-allowed; }
+  .engagement { background: var(--panel-2); border: 1px solid var(--border);
+                border-radius: 6px; padding: 12px; margin-bottom: 10px;
+                font-size: 12px; }
+  .engagement .id { font-family: ui-monospace, SFMono-Regular, monospace;
+                    color: var(--accent); }
+  .engagement .row { display: flex; justify-content: space-between;
+                     align-items: center; margin-top: 4px; }
+  .status { padding: 2px 8px; border-radius: 999px; font-size: 11px;
+            font-weight: 600; }
+  .status.pending  { background: #21262d; color: var(--muted); }
+  .status.running  { background: #d29922; color: #0e1116; }
+  .status.complete { background: var(--ok); color: #0e1116; }
+  .status.failed   { background: var(--err); color: #fff; }
+  .status.rejected { background: var(--err); color: #fff; }
+  .links a { color: var(--accent); text-decoration: none; margin-right: 12px; }
+  .links a:hover { text-decoration: underline; }
+  .empty { color: var(--muted); font-size: 13px; padding: 20px; text-align: center; }
+  .hint { color: var(--muted); font-size: 11px; margin-top: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>network_pipeline · click-to-run</h1>
+  <div class="meta" id="meta">loading…</div>
+</header>
+<main>
+  <section>
+    <h2>Authorised test targets</h2>
+    <div id="targets" class="empty">loading targets…</div>
+  </section>
+  <section>
+    <h2>Engagements (this server)</h2>
+    <div id="engagements" class="empty">no engagements yet</div>
+  </section>
+</main>
+
+<script>
+async function jget(path) {
+  const r = await fetch(path);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function jpost(path, body) {
+  const r = await fetch(path, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) {
+    const t = await r.text();
+    throw new Error(`HTTP ${r.status}: ${t}`);
+  }
+  return r.json();
+}
+
+function badge(text, cls = "") {
+  return `<span class="badge ${cls}">${text}</span>`;
+}
+
+function renderTarget(t) {
+  const auth = t.auth_required
+    ? `<div class="controls">
+         <input type="text" id="auth-${t.id}"
+                placeholder="${t.auth_hint || 'paste Cookie header value here'}" />
+         <button onclick="runEngagement('${t.id}', true)">Run</button>
+       </div>
+       <div class="hint">auth required — see "Authorisation" below</div>`
+    : `<div class="controls">
+         <button onclick="runEngagement('${t.id}', false)">Run</button>
+       </div>`;
+  const badges = [
+    badge(t.owner),
+    badge(t.default_flags.playbook),
+    badge(`${t.default_flags.max_iterations} iter`),
+    t.scope_note ? badge(t.scope_note, "warn") : "",
+  ].join("");
+  const expected = (t.expected_findings || [])
+    .map(e => badge(e)).join(" ");
+  return `<div class="target">
+    <h3>${t.name}</h3>
+    <div class="url">${t.target}</div>
+    <div class="badges">${badges}</div>
+    <div class="desc">${t.description}</div>
+    <div class="hint">Expected: ${expected || "—"}</div>
+    <div class="hint">Authorisation: ${t.authorisation}</div>
+    ${auth}
+  </div>`;
+}
+
+function renderEngagement(e) {
+  const status = e.status || "pending";
+  const fid = e.engagement_id;
+  const links = (status === "complete")
+    ? `<div class="links">
+         <a href="/api/engagements/${fid}/findings">findings</a>
+         <a href="/api/engagements/${fid}/report?fmt=sarif">SARIF</a>
+         <a href="/api/engagements/${fid}/report?fmt=json">JSON</a>
+         <a href="/api/engagements/${fid}">meta</a>
+       </div>`
+    : `<div class="links">
+         <a href="/api/engagements/${fid}">poll meta</a>
+       </div>`;
+  const summary = e.summary && Object.keys(e.summary).length
+    ? `findings=${e.summary.findings || 0}, completed=${e.summary.completed || 0}, blocked=${e.summary.blocked || 0}`
+    : "";
+  return `<div class="engagement">
+    <div class="row">
+      <div class="id">${fid}</div>
+      <span class="status ${status}">${status}</span>
+    </div>
+    <div class="row">
+      <div>${e.target || ""}</div>
+      <div>${e.started_at || ""}</div>
+    </div>
+    ${summary ? `<div>${summary}</div>` : ""}
+    ${links}
+    ${e.reason ? `<div class="hint">${e.reason}</div>` : ""}
+    ${e.error ? `<div class="hint">${e.error}</div>` : ""}
+  </div>`;
+}
+
+async function loadTargets() {
+  try {
+    const data = await jget("/api/targets");
+    const div = document.getElementById("targets");
+    if (!data.targets.length) {
+      div.innerHTML = '<div class="empty">no targets configured</div>';
+      return;
+    }
+    div.innerHTML = "";
+    div.classList.remove("empty");
+    data.targets.forEach(t => {
+      const wrap = document.createElement("div");
+      wrap.innerHTML = renderTarget(t);
+      div.appendChild(wrap.firstElementChild);
+    });
+    document.getElementById("meta").textContent =
+      `${data.count} targets · poll every 5s`;
+  } catch (e) {
+    document.getElementById("targets").textContent = "error: " + e.message;
+  }
+}
+
+async function loadEngagements() {
+  try {
+    const data = await jget("/api/engagements");
+    const div = document.getElementById("engagements");
+    if (!data.engagements.length) {
+      div.innerHTML = '<div class="empty">no engagements yet · click Run on a target</div>';
+      return;
+    }
+    div.innerHTML = "";
+    div.classList.remove("empty");
+    data.engagements.forEach(e => {
+      const wrap = document.createElement("div");
+      wrap.innerHTML = renderEngagement(e);
+      div.appendChild(wrap.firstElementChild);
+    });
+  } catch (e) {
+    document.getElementById("engagements").textContent = "error: " + e.message;
+  }
+}
+
+async function runEngagement(targetId, needsAuth) {
+  const body = {target_id: targetId};
+  if (needsAuth) {
+    const v = document.getElementById("auth-" + targetId).value.trim();
+    if (!v) { alert("paste the Cookie header value first"); return; }
+    body.auth_cookie = v;
+  }
+  try {
+    const result = await jpost("/api/engagements", body);
+    if (result.status === "rejected") {
+      alert("rejected: " + (result.reason || "unknown"));
+    }
+  } catch (e) {
+    alert("failed: " + e.message);
+  }
+  loadEngagements();
+}
+
+loadTargets();
+loadEngagements();
+setInterval(loadEngagements, 5000);
+</script>
+</body>
+</html>

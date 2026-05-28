@@ -1,0 +1,20 @@
+id: WP-XMLRPC-ENABLED
+title: WordPress XML-RPC enabled (brute-force / DDoS amplification risk)
+severity: medium
+http_request:
+  method: POST
+  path: /xmlrpc.php
+  body: "<?xml version='1.0'?><methodCall><methodName>system.listMethods</methodName><params></params></methodCall>"
+  headers:
+    Content-Type: text/xml
+expected_response:
+  status: 200
+  body_contains: "methodResponse"
+cvss: 5.3
+cwe:
+  - CWE-307
+mitre:
+  - T1110
+references:
+  - https://www.wordfence.com/learn/xml-rpc-wordpress/
+remediation: Disable XML-RPC via plugin or nginx rule if not in use.

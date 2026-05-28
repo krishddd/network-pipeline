@@ -1,0 +1,63 @@
+# network_pipeline — Python dependencies
+#
+# This file is for convenience (`pip install -r network_pipeline/requirements.txt`).
+# The canonical source is the `[network]` + `[api]` extras in the parent
+# `pyproject.toml` — prefer `pip install -e ".[network,api]"` from the
+# Security_module root.
+#
+# See SETUP.md for the full install procedure (including the external
+# binaries the agents call: nmap, nuclei, sqlmap, dalfox, ffuf, ...).
+
+# --- LangGraph / LangChain core ----------------------------------------
+langchain>=0.3.0
+langgraph>=0.2.0
+langchain-core>=0.3.0
+langchain-ollama>=0.2.0
+langchain-openai>=0.2.0
+langchain-anthropic>=0.2.0
+
+# --- Pydantic stack ----------------------------------------------------
+# typing_extensions>=4.13 is required because pydantic_core imports
+# `Sentinel` (added in 4.13). Some pip-installed pentest tools downgrade
+# this — re-pin if you hit ImportError on `Sentinel`.
+pydantic>=2.0
+pydantic-settings>=2.0
+typing_extensions>=4.13
+
+# --- Engagement infra --------------------------------------------------
+filelock>=3.13
+python-libnmap>=0.7.3
+tiktoken>=0.7.0
+pyyaml>=6.0
+numpy>=1.24
+
+# --- API surface (FastAPI server: `serve` command) ---------------------
+fastapi>=0.110
+uvicorn[standard]>=0.27
+
+# --- CLI / IO ----------------------------------------------------------
+click>=8.0
+rich>=13.0
+httpx>=0.27.0           # Python HTTP client (NOT the ProjectDiscovery
+                        # `httpx` scanner — that ships as a Go binary).
+                        # On Windows, rename the conda
+                        # `Scripts\httpx.exe` shim so it doesn't shadow
+                        # the Go binary. See TROUBLESHOOTING.md.
+python-dotenv>=1.0.0
+
+# --- Pentest tools that ship as Python packages ------------------------
+# (These are CLIs, not libraries the pipeline imports.)
+sqlmap
+arjun
+wapiti3
+# ParamSpider isn't on PyPI — install from GitHub:
+#   set PYTHONUTF8=1
+#   pip install git+https://github.com/0xKayala/ParamSpider.git
+
+# --- Optional: precise tokenization (instead of tiktoken approx) -------
+# transformers>=4.40
+# tokenizers>=0.19
+
+# --- Tests -------------------------------------------------------------
+pytest>=8.0
+pytest-asyncio>=0.23.0

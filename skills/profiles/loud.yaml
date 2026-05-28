@@ -1,0 +1,16 @@
+# Loud callback profile — maximum throughput, no shaping.
+#
+# This is the Phase-1 default behaviour: zero sleep, no UA rotation,
+# no decoys. Use when the engagement explicitly authorises noisy
+# scanning (e.g. internal lab targets) and you want maximum coverage
+# per wall-clock minute.
+
+name: loud
+sleep_s: 0.0
+jitter_pct: 0.0
+request_pacing: burst
+
+# Empty pool ⇒ ShellRunner doesn't add a User-Agent header.
+user_agents: []
+extra_headers: {}
+decoy_targets: []

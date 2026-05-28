@@ -1,0 +1,72 @@
+# Secrets — NEVER commit these.
+.env
+.env.*
+!.env.example
+
+# Workspaces produced by `cli plan` / `cli run` / `cli autopilot`.
+workspace/
+engagements/
+runs/
+*.engagement-state.json
+
+# Per-engagement KG + findings (live under workspace dirs but glob too).
+kg.json
+kg.json.lock
+findings.jsonl
+agent_traces.log
+pipeline.log
+hrl/
+state_snapshots/
+tool_io/
+
+# Generated reports.
+report.json
+report.sarif
+report_bugcrowd.csv
+report_hackerone/
+attack_chain.mmd
+
+# Python build / cache.
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+venv/
+.venv/
+env/
+
+# IDE / Claude
+.claude/
+.idea/
+.vscode/
+
+# Secrets (extra)
+*.pem
+*.key
+*.p12
+*.pfx
+client_secret*.json
+credentials.json
+token.json
+service-account*.json
+
+# Generated data
+chroma_db/
+data/chroma/
+data/*.db
+data/*.pkl
+data/*.sqlite3
+*.sqlite3
+logs/
+*.log
+results/
+
+# Large docs
+*.docx
+*.pdf
+
+# OS
+.DS_Store
+Thumbs.db

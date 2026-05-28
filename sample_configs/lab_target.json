@@ -1,0 +1,22 @@
+{
+  "engagement_name": "juice-shop-lab",
+  "target": "http://localhost:8080",
+  "in_scope": [
+    {"target": "localhost",       "type": "domain"},
+    {"target": "127.0.0.1",       "type": "ip"},
+    {"target": "127.0.0.0/8",     "type": "cidr"}
+  ],
+  "out_of_scope": [],
+  "permitted_actions": [
+    "port scanning",
+    "service fingerprinting",
+    "nuclei template probing",
+    "manual curl repro of detected CVEs"
+  ],
+  "prohibited_actions": [
+    "denial of service",
+    "destructive payloads",
+    "data exfiltration from host filesystem"
+  ],
+  "notes": "Example config targeting a local juice-shop container. Run: docker run -d -p 8080:3000 bkimminich/juice-shop"
+}

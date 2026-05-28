@@ -1,0 +1,60 @@
+name: mitre_initial_access
+description: |
+  ATT&CK Initial Access (TA0001) emulation. Focus on T1190 + T1133
+  (external remote services). Drives the agent toward proven entry
+  points without lateral movement.
+
+steps:
+  - id: pb-ia-recon-services
+    mitre_id: T1595.001
+    phase: recon
+    title: "Active scanning — IP block sweep"
+    description: "Scan the in-scope IP block for live hosts and well-known service ports."
+    preconditions: []
+    acceptance_criteria:
+      - "≥1 host with open port recorded in KG"
+    tool_hint: "nmap"
+
+  - id: pb-ia-fingerprint
+    mitre_id: T1595.002
+    phase: scan
+    title: "Service version + tech fingerprinting"
+    description: "Identify exact software versions for every open service to score CVE exposure."
+    preconditions:
+      - "host"
+    acceptance_criteria:
+      - "Each open port has a service node with product+version"
+    tool_hint: "nmap"
+
+  - id: pb-ia-cve-probe
+    mitre_id: T1190
+    phase: initial-access
+    title: "CVE-template nuclei sweep"
+    description: |
+      Run nuclei with the cve template set against fingerprinted
+      services. Filter to severity medium+ to avoid noise.
+    preconditions:
+      - "service"
+    acceptance_criteria:
+      - "Nuclei run completed against discovered services"
+      - "Any CVE match recorded with cve id + confidence=verified"
+    tool_hint: "nuclei"
+    opsec_max: standard
+    priority_bump: 1
+
+  - id: pb-ia-default-creds
+    mitre_id: T1078.001
+    phase: initial-access
+    title: "Default-credential probe on admin panels"
+    description: |
+      For any discovered admin / login endpoint, attempt the top-N
+      default-credential pairs from the shared cred list. Stop at
+      first success; do NOT brute-force.
+    preconditions:
+      - "endpoint"
+    acceptance_criteria:
+      - "≥1 admin endpoint probed with default creds"
+      - "Any positive auth recorded as credential KG node"
+    tool_hint: "auth_replay"
+    opsec_max: careful
+    priority_bump: 2

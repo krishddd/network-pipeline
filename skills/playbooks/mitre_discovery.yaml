@@ -1,0 +1,60 @@
+name: mitre_discovery
+description: |
+  ATT&CK Discovery (TA0007) emulation, scoped to network/web. Maps the
+  attack surface before any exploitation: hosts → ports → services →
+  endpoints → parameters → cloud metadata.
+
+steps:
+  - id: pb-disc-subdomains
+    mitre_id: T1590.005
+    phase: recon
+    title: "Subdomain enumeration via subfinder + dnsx"
+    description: |
+      Passive subdomain harvest with subfinder, live-resolution check
+      with dnsx. Adds discovered hosts to the KG.
+    preconditions: []
+    acceptance_criteria:
+      - "≥1 host added to KG with type=host"
+    tool_hint: "subfinder"
+    opsec_max: silent  # passive only
+
+  - id: pb-disc-portscan
+    mitre_id: T1046
+    phase: scan
+    title: "Port + service scan of discovered hosts"
+    description: "nmap -sV against the host list; ingest XML into KG."
+    preconditions:
+      - "host"
+    acceptance_criteria:
+      - "Each host has ≥1 port node attached"
+    tool_hint: "nmap"
+    opsec_max: standard
+
+  - id: pb-disc-web-tech
+    mitre_id: T1595.002
+    phase: scan
+    title: "Web tech detection (httpx)"
+    description: "httpx with -tech-detect against HTTP/HTTPS services."
+    preconditions:
+      - "service where service=http"
+    acceptance_criteria:
+      - "Each HTTP service has tech labels in its KG properties"
+    tool_hint: "httpx"
+    opsec_max: standard
+    priority_bump: 1
+
+  - id: pb-disc-cloud-meta
+    mitre_id: T1580
+    phase: recon
+    title: "Cloud metadata / SSRF target enumeration"
+    description: |
+      For each discovered web service, enumerate likely cloud-metadata
+      paths (169.254.169.254 / metadata.google.internal etc.) so the
+      SSRF probing step has concrete targets.
+    preconditions:
+      - "service where service=http"
+    acceptance_criteria:
+      - "Cloud-metadata target list written to workspace/recon/cloud_meta.json"
+    tool_hint: "getjs"
+    opsec_max: silent  # purely informational
+    priority_bump: 2

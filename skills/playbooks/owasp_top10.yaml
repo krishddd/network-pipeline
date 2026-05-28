@@ -1,0 +1,158 @@
+# OWASP Top 10 (2021) playbook — web-vuln coverage chain.
+#
+# Each step is a deterministic technique drawn from PTES + OWASP WSTG
+# guidance, mapped to MITRE ATT&CK where applicable. The playbook
+# engine emits these as Objectives once their KG preconditions hold —
+# so e.g. the SQLi step won't fire until at least one HTTP service
+# node exists in the KG.
+#
+# Step ids are stable so resumed engagements don't double-emit.
+
+name: owasp_top10
+description: |
+  OWASP Top 10 (2021) coverage chain. Drives recon → param mining →
+  fuzzing → SQLi/XSS/SSRF/IDOR/auth/JWT/misconfig in that order.
+
+steps:
+  # ── Recon entry — no preconditions, fires immediately ─────────
+  - id: pb-recon-jsmap
+    mitre_id: T1592.002
+    phase: recon
+    title: "Map JS endpoints + parameters from the target"
+    description: |
+      Pull every JS file referenced by the target, extract URLs and
+      parameter names with getJS + LinkFinder + paramspider + arjun.
+      Populate the KG with discovered endpoints/parameters so later
+      steps have a substrate to fuzz against.
+    preconditions: []
+    acceptance_criteria:
+      - "≥1 JS endpoint added to KG (type=endpoint)"
+      - "≥1 parameter recorded for at least one endpoint"
+    tool_hint: "getjs"
+    priority_bump: 0
+
+  # ── Content discovery — needs at least one HTTP/HTTPS service ──
+  - id: pb-scan-content
+    mitre_id: T1595.003
+    phase: scan
+    title: "Content + directory discovery (ffuf + feroxbuster)"
+    description: |
+      Brute-force directory and file paths against discovered web
+      services to surface admin panels, backup files, debug endpoints,
+      .git / .env exposures, and other A05 misconfig surfaces.
+    preconditions:
+      - "service where service=http"
+    acceptance_criteria:
+      - "ffuf or feroxbuster run completed against the target"
+      - "Hidden paths added to KG as endpoint nodes"
+    tool_hint: "ffuf"
+    opsec_max: standard
+    priority_bump: 1
+
+  # ── Server fingerprint + misconfig (A05) ───────────────────────
+  - id: pb-scan-misconfig
+    mitre_id: T1595.002
+    phase: scan
+    title: "Server misconfiguration sweep (nikto + wapiti)"
+    description: |
+      Run a fast misconfiguration / outdated-software check via nikto
+      and a broad OWASP scan via wapiti. Aim is A05 (security
+      misconfiguration) and A06 (vulnerable components) coverage.
+    preconditions:
+      - "service where service=http"
+    acceptance_criteria:
+      - "nikto and/or wapiti completed"
+      - "Findings recorded for any HIGH/CRITICAL hits with verified evidence"
+    tool_hint: "nikto"
+    opsec_max: standard
+    priority_bump: 2
+
+  # ── Injection — A03 ────────────────────────────────────────────
+  - id: pb-exploit-sqli
+    mitre_id: T1190
+    phase: initial-access
+    title: "SQL injection probing (sqlmap, --batch --level 1 --risk 1)"
+    description: |
+      Run sqlmap in batch mode against discovered endpoints with
+      parameters. Argv-guard refuses --os-shell / --os-pwn so the
+      probe stays within RoE. Aim is A03 SQL Injection coverage.
+    preconditions:
+      - "endpoint"
+    acceptance_criteria:
+      - "sqlmap probe completed against ≥1 parameterised endpoint"
+      - "Any positive injection recorded with confidence=verified + 2 methods"
+    tool_hint: "sqlmap"
+    opsec_max: standard
+    priority_bump: 3
+
+  - id: pb-exploit-xss
+    mitre_id: T1059.007
+    phase: initial-access
+    title: "Cross-site scripting (dalfox)"
+    description: |
+      Run dalfox against parameterised endpoints to detect reflected,
+      DOM, and stored XSS. Captures DOM diff + payload echo as
+      evidence. A03 (injection) coverage on the client side.
+    preconditions:
+      - "endpoint"
+    acceptance_criteria:
+      - "dalfox run completed against ≥1 endpoint"
+      - "Any positive XSS recorded with confidence=verified"
+    tool_hint: "dalfox"
+    opsec_max: standard
+    priority_bump: 4
+
+  # ── Auth + JWT — A07 ───────────────────────────────────────────
+  - id: pb-exploit-jwt
+    mitre_id: T1212
+    phase: initial-access
+    title: "JWT alg / kid / none confusion (jwt_tool)"
+    description: |
+      If a JWT was captured during recon (auth_replay), run jwt_tool
+      against it: alg=none, kid path traversal, weak HMAC, alg
+      confusion (RS→HS). A07 (identification & authentication
+      failures).
+    preconditions:
+      - "credential where type=jwt"
+    acceptance_criteria:
+      - "jwt_tool run completed against the captured token"
+      - "Any forgable token recorded as HIGH severity finding"
+    tool_hint: "jwt_tool"
+    opsec_max: careful
+    priority_bump: 5
+
+  # ── Broken access control — A01 ────────────────────────────────
+  - id: pb-exploit-idor
+    mitre_id: T1190
+    phase: initial-access
+    title: "Authenticated IDOR / BOLA probing (auth_replay + curl)"
+    description: |
+      Walk numeric / opaque ID parameters on authenticated endpoints
+      with the captured AuthState. Look for cross-tenant data leak
+      (A01). Stop at the first proven leak and record evidence.
+    preconditions:
+      - "endpoint"
+      - "credential where type=session"
+    acceptance_criteria:
+      - "≥3 ID values probed on at least one endpoint"
+      - "Any cross-tenant leak recorded with confidence=verified + 2 methods"
+    tool_hint: "auth_replay"
+    opsec_max: standard
+    priority_bump: 6
+
+  # ── SSRF / file inclusion — A10 / A03 ──────────────────────────
+  - id: pb-exploit-ssrf
+    mitre_id: T1190
+    phase: initial-access
+    title: "SSRF + file-inclusion probing"
+    description: |
+      Use wapiti's SSRF + file-inclusion modules against parameterised
+      endpoints. OOB confirmation via callback server when available.
+    preconditions:
+      - "endpoint"
+    acceptance_criteria:
+      - "Wapiti SSRF/FI module ran against ≥1 endpoint"
+      - "Any OOB callback recorded with timestamp + payload"
+    tool_hint: "wapiti"
+    opsec_max: standard
+    priority_bump: 7

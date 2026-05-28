@@ -1,0 +1,18 @@
+id: EXPOSED-ENV-FILE
+title: Exposed .env file — credentials and secrets disclosure
+severity: critical
+http_request:
+  method: GET
+  path: /.env
+  body: ""
+expected_response:
+  status: 200
+  body_contains: "APP_"
+cvss: 9.1
+cwe:
+  - CWE-312
+mitre:
+  - T1552
+references:
+  - https://owasp.org/www-project-top-ten/
+remediation: Block access to .env files. Move secrets to environment variables or a vault.
