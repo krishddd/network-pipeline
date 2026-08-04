@@ -19,48 +19,22 @@ the next.
 
 ## High-level architecture
 
-```
-                ┌────────────────────────────────────┐
-                │           Orchestrator             │
-                │  (LangGraph state machine,         │
-                │   HRL trajectory + ToT planner,    │
-                │   budget + critic + supervisor)    │
-                └─────────────────┬──────────────────┘
-                                  │
-        ┌─────────────────────────┼─────────────────────────┐
-        ▼                         ▼                         ▼
-   Recon agent              Scanner agent             Exploit agent
-   • passive DNS            • port scan               • SQLi / XSS
-   • whois                  • web audit               • mass-assignment
-   • subdomain enum         • TLS / JWT scan          • BOLA, SSRF, RCE
-   • cert + JS endpoints    • OpenAPI / GraphQL       • Sliver C2 helpers
-                            • LLM-target probes
-        │                         │                         │
-        └────────────┬────────────┴─────────────┬───────────┘
-                     ▼                          ▼
-              Defender agent              Verifier agent
-              • deception traces          • re-runs PoCs
-              • detection ingest          • integrity hashes
-                     │                          │
-                     └────────────┬─────────────┘
-                                  ▼
-                            Analyst agent
-                            • finding synthesis
-                            • attack-chain assembly
-                            • skill / playbook lookup
-                                  │
-                                  ▼
-                          Causal Knowledge Graph
-                          (entities, signals,
-                           evidence, exploit edges)
-                                  │
-                                  ▼
-                          Report emitters
-                          ├─ report.json
-                          ├─ report.sarif
-                          ├─ report_bugcrowd.csv
-                          ├─ report_hackerone/
-                          └─ attack_chain.mmd
+```mermaid
+flowchart TD
+    ORCH["<b>Orchestrator</b><br/>LangGraph state machine<br/>HRL trajectory + ToT planner<br/>budget · critic · supervisor"]
+    RECON["<b>Recon agent</b><br/>passive DNS · whois<br/>subdomain enum<br/>cert + JS endpoints"]
+    SCAN["<b>Scanner agent</b><br/>port scan · web audit<br/>TLS / JWT scan<br/>OpenAPI / GraphQL · LLM-target probes"]
+    EXP["<b>Exploit agent</b><br/>SQLi / XSS · BOLA · SSRF · RCE<br/>mass-assignment · Sliver C2 helpers"]
+    DEF["<b>Defender agent</b><br/>deception traces · detection ingest"]
+    VER["<b>Verifier agent</b><br/>re-runs PoCs · integrity hashes"]
+    ANALYST["<b>Analyst agent</b><br/>finding synthesis<br/>attack-chain assembly · skill/playbook lookup"]
+    CKG["<b>Causal Knowledge Graph</b><br/>entities · signals · evidence · exploit edges"]
+    REP["<b>Report emitters</b><br/>report.json · report.sarif · report_bugcrowd.csv<br/>report_hackerone/ · attack_chain.mmd"]
+
+    ORCH --> RECON & SCAN & EXP
+    RECON & SCAN & EXP --> DEF & VER
+    DEF & VER --> ANALYST
+    ANALYST --> CKG --> REP
 ```
 
 ---
